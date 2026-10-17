@@ -4,7 +4,8 @@ DSH 后台通知插件：任务完成时在 DSH 内提醒；需要你选择时�
 
 ## 功能
 
-- **任务完成**：DSH 右下角弹出「任务已完成」卡片并播放提示音，15 秒自动收起，点击卡片可打开对应会话。
+- **任务完成**：DSH 右下角弹出绿色「任务已完成」卡片并播放上行提示音，15 秒自动收起，点击卡片可打开对应会话。
+- **任务失败**：本轮以错误、进程中断或登录失效结束时，弹出红色「任务执行失败」卡片并播放下行提示音，显示错误信息，需手动关闭。
 - **提问**：弹出置顶的 Windows 系统窗口，显示问题、选项和文本框；支持单选、多选，也支持直接输入文字作为答案。
 - **审批**：系统窗口显示工具名和原因，提供「允许一次 / 拒绝」。
 - **回落**：关闭或取消系统窗口时，请求会回到 DSH 原有的提问/审批界面，不会把任务卡住。
@@ -23,7 +24,8 @@ plugin_manager install_bundle target=<项目目录>
 
 | 文件 | 作用 |
 | --- | --- |
-| `index.js` | Host 端：拦截 `user-questions/request` 与 `approval/request`，校验答案，取消时回落 |
+| `index.js` | Host 端：注册 `turn/end` 结果投影，拦截 `user-questions/request` 与 `approval/request`，校验答案，取消时回落 |
+| `turn-outcome.js` | 从 `turn/end` 的 reason 折叠出本轮失败信息，供浏览器端区分完成与失败 |
 | `native-dialog.js` | 启动/回收 PowerShell 子进程，负责 stdin/stdout JSON 协议 |
 | `alert-window.ps1` | PowerShell + WPF 系统窗口：主题、选项、多选、自由输入、系统提示音 |
 | `client.js` | 浏览器端：监听 `ui-session` 状态，显示完成提醒并播放 Web Audio 提示音 |
@@ -35,7 +37,8 @@ plugin_manager install_bundle target=<项目目录>
 - Host 以 `prepend` 注册在两条 waterfall 事件前面，因此系统窗口先于网页回答者出现。
 - 答案以一行 `###RESULT###<json>` 从 PowerShell 的 stdout 返回；任何失败都回落到 DSH 原有流程。
 - 单选时输入文字会覆盖选项；多选时文字作为补充答案；无选项问题时文字就是答案。
-- 完成提醒完全在浏览器端：比较连续两次 `sessionStatus`，`running: true → false` 时提示。
+- 完成/失败提醒在浏览器端：比较连续两次 `sessionStatus`，`running: true → false` 后读取 Host 注册的 `backgroundNotice` 投影，`turn/end` 带错误原因时显示失败样式，否则显示完成样式。
+- 结果投影会等待约 400 ms 再分类，避免投影帧晚于状态帧时把失败误报成完成。
 
 ## 限制
 

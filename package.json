@@ -13,6 +13,7 @@
   "files": [
     "index.js",
     "client.js",
+    "turn-outcome.js",
     "native-dialog.js",
     "alert-window.ps1",
     "cordis.patch.yml",

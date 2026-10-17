@@ -5,6 +5,7 @@
  * normal DSH flow. Turn-completion reminders stay in the browser plugin.
  */
 import { nativeDialogAvailable, openDialog } from './native-dialog.js';
+import { createTurnOutcomeProjection } from './turn-outcome.js';
 
 function shortSessionId(agent) {
   if (agent === undefined || typeof agent.id !== 'string') return '';
@@ -126,6 +127,12 @@ async function offerApproval(request, next, track) {
  * @param {object} ctx - Host plugin context.
  */
 export function apply(ctx) {
+  // Completion/failure classification must work on every platform; only the
+  // native choice window below is Windows-only.
+  ctx.inject(['sessionProjections'], scope => {
+    scope.sessionProjections.register(createTurnOutcomeProjection());
+  });
+
   if (!nativeDialogAvailable()) return;
 
   const dialogs = new Set();
