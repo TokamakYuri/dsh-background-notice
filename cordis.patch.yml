@@ -1,0 +1,4 @@
+- insert:
+    - id: dsh-background-notice
+      name: dsh-background-notice
+      config: {}

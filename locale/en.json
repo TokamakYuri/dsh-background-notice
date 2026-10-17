@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Background Notice",
+    "description": "Pops up in DSH and chimes when a turn completes; opens a native Windows window where you can pick or type an answer."
+  }
+}
