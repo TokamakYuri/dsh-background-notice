@@ -379,7 +379,11 @@ function New-QuestionGroup($question) {
       $row.Child = $choice
 
       $row.Tag = $choice
-      $row.Add_MouseLeftButtonUp({ param($sender, $eventArgs) $sender.Tag.IsChecked = $true })
+      if ($multi) {
+        $row.Add_MouseLeftButtonUp({ param($sender, $eventArgs) $sender.Tag.IsChecked = -not $sender.Tag.IsChecked })
+      } else {
+        $row.Add_MouseLeftButtonUp({ param($sender, $eventArgs) $sender.Tag.IsChecked = $true })
+      }
       $row.Add_MouseEnter({ param($sender, $eventArgs) $sender.Background = $window.Resources['OptionHoverBrush'] })
       $row.Add_MouseLeave({ param($sender, $eventArgs) $sender.Background = [System.Windows.Media.Brushes]::Transparent })
 

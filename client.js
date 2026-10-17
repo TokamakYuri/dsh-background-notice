@@ -85,22 +85,23 @@ window.__ModuleLoader__.load({
       let start = 0;
       try {
         start = context.currentTime + 0.03;
-      } catch {
-        return;
-      }
-      for (let index = 0; index < notes.length; index += 1) {
-        const at = start + index * gap;
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(notes[index], at);
-        gain.gain.setValueAtTime(0.0001, at);
-        gain.gain.exponentialRampToValueAtTime(0.13, at + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.34);
-        oscillator.connect(gain);
-        gain.connect(context.destination);
-        oscillator.start(at);
-        oscillator.stop(at + 0.36);
+        for (let index = 0; index < notes.length; index += 1) {
+          const at = start + index * gap;
+          const oscillator = context.createOscillator();
+          const gain = context.createGain();
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(notes[index], at);
+          gain.gain.setValueAtTime(0.0001, at);
+          gain.gain.exponentialRampToValueAtTime(0.13, at + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.34);
+          oscillator.connect(gain);
+          gain.connect(context.destination);
+          oscillator.start(at);
+          oscillator.stop(at + 0.36);
+        }
+      } catch (error) {
+        // A blocked or torn-down audio graph must never break the notice UI.
+        console.error('dsh-background-notice: chime failed', error);
       }
     }
 
@@ -274,7 +275,11 @@ window.__ModuleLoader__.load({
                 sequence.current += 1;
                 copy.push({ ...addition, id: sequence.current });
               }
-              return copy.slice(-MAX_VISIBLE_NOTICES);
+              while (copy.length > MAX_VISIBLE_NOTICES) {
+                const doneIndex = copy.findIndex(notice => notice.kind === 'done');
+                copy.splice(doneIndex >= 0 ? doneIndex : 0, 1);
+              }
+              return copy;
             });
           }, [status]);
 
