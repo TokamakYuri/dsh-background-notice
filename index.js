@@ -2,7 +2,7 @@
  * Host half of dsh-background-notice: offers a native Windows choice window for blocking
  * user questions and approvals. The window runs before the web answerer, so a
  * question shows up as a real system window; closing it delegates to the
- * normal DSH flow. Turn-completion reminders stay in the browser plugin.
+ * normal DSH flow. Turn-outcome reminders stay in the browser plugin.
  */
 import { nativeDialogAvailable, openDialog } from './native-dialog.js';
 import { createTurnOutcomeProjection } from './turn-outcome.js';

@@ -1,7 +1,7 @@
 /**
  * Host-side session projection exposing the terminal outcome of the latest
- * turn. The browser half reads it from the session-list row so a failed turn
- * is reported differently from a completed one.
+ * turn. The browser half reads it from the session-list row so a stopped or
+ * failed turn is reported differently from a completed one.
  *
  * The projection registry only calls schema `parse()` on state and wire views,
  * so these are small hand-written validators instead of a schema dependency.
@@ -15,8 +15,8 @@ function isRecord(value) {
 
 /**
  * Map one `turn/end` reason onto the failure the chat UI would show.
- * Completed, blocked, max-token, stop-requested, and forked endings are not
- * failures.
+ * Completed, blocked, max-token, stopped, and forked endings are not failures;
+ * `stoppedByTurnEnd` identifies the deliberate stop among them.
  */
 export function failureOfTurnEnd(reason, turn) {
   if (!isRecord(reason)) return null;
@@ -40,23 +40,43 @@ export function failureOfTurnEnd(reason, turn) {
   return null;
 }
 
+/**
+ * Return true when the turn was deliberately stopped rather than completed or
+ * failed. Every `aborted` ending counts, except the signed-out hook case that
+ * `failureOfTurnEnd` already reports as a failure.
+ */
+export function stoppedByTurnEnd(reason) {
+  if (!isRecord(reason) || reason.kind !== 'aborted') return false;
+  return failureOfTurnEnd(reason) === null;
+}
+
 function sameFailure(left, right) {
   if (left === right) return true;
   if (left === null || right === null || left === undefined || right === undefined) return false;
   return left.message === right.message && left.code === right.code && left.turn === right.turn;
 }
 
-/** Fold one committed event into `{ failure }`. */
+function sameOutcome(left, right) {
+  if (left === right) return true;
+  if (!isRecord(left) || !isRecord(right)) return false;
+  return left.stopped === right.stopped && sameFailure(left.failure, right.failure);
+}
+
+/** Fold one committed event into `{ failure, stopped }`. */
 export function applyTurnOutcome(state, event) {
   if (!isRecord(event) || typeof event.type !== 'string') return state;
   if (event.type === 'turn/start') {
-    return state.failure === null ? state : { failure: null };
+    return state.failure === null && state.stopped === false
+      ? state
+      : { failure: null, stopped: false };
   }
   if (event.type !== 'turn/end') return state;
   const data = isRecord(event.data) ? event.data : {};
   const turn = typeof data.turn === 'number' ? data.turn : 0;
   const failure = failureOfTurnEnd(data.reason, turn);
-  return sameFailure(state.failure, failure) ? state : { failure };
+  const stopped = failure === null && stoppedByTurnEnd(data.reason);
+  const next = { failure, stopped };
+  return sameOutcome(state, next) ? state : next;
 }
 
 function invalid(message) {
@@ -74,6 +94,7 @@ export const turnOutcomeSchema = {
       if (typeof failure.turn !== 'number' || !Number.isFinite(failure.turn)) invalid('failure.turn must be a number');
       if (failure.code !== undefined && typeof failure.code !== 'string') invalid('failure.code must be a string');
     }
+    if (typeof value.stopped !== 'boolean') invalid('stopped must be a boolean');
     return value;
   },
 };
@@ -83,8 +104,8 @@ export function createTurnOutcomeProjection() {
   return {
     key: TURN_OUTCOME_KEY,
     stateSchema: turnOutcomeSchema,
-    stateVersion: 1,
-    init: () => ({ failure: null }),
+    stateVersion: 2,
+    init: () => ({ failure: null, stopped: false }),
     apply: applyTurnOutcome,
     wire: {
       viewSchema: turnOutcomeSchema,
